@@ -57,6 +57,11 @@ function today() {
   return d;
 }
 
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function addDays(date, n) {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
@@ -289,6 +294,14 @@ function renderDetail(taskId) {
     </div>
 
     <button class="btn btn-success" onclick="markDone('${taskId}')">✓ Mark as Complete — Done Today</button>
+    <button class="btn btn-ghost" onclick="toggleDatePicker()" style="color:var(--blue)">📅 Mark Done on a Different Date</button>
+    <div id="date-picker-section" style="display:none;margin-bottom:10px">
+      <div class="detail-card" style="margin-bottom:0">
+        <div class="form-label" style="margin-bottom:8px;font-size:14px">Date of Maintenance</div>
+        <input type="date" class="form-input" id="custom-date-input" max="${todayStr()}">
+        <button class="btn btn-success" style="margin-top:12px;margin-bottom:0" onclick="markDoneOnDate('${taskId}')">✓ Confirm This Date</button>
+      </div>
+    </div>
     <button class="btn btn-primary" onclick="navigate('add-task','${taskId}')">✏️ Edit Task</button>
     <button class="btn btn-ghost" onclick="confirmDelete('${taskId}')">🗑️ Delete Task</button>
 
@@ -303,6 +316,33 @@ function markDone(taskId) {
   if (!task) return;
   task.lastDone = Date.now();
   state.history.push({ taskId, completedAt: Date.now() });
+  save();
+  renderDetail(taskId);
+}
+
+function toggleDatePicker() {
+  const section = document.getElementById('date-picker-section');
+  if (!section) return;
+  const isHidden = section.style.display === 'none' || section.style.display === '';
+  section.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) {
+    // Pre-fill with today's date and focus the input
+    const inp = document.getElementById('custom-date-input');
+    if (inp) { inp.value = todayStr(); inp.focus(); }
+  }
+}
+
+function markDoneOnDate(taskId) {
+  const inp = document.getElementById('custom-date-input');
+  if (!inp || !inp.value) { alert('Please select a date.'); return; }
+  // Parse at noon local time to avoid timezone boundary issues
+  const ts = new Date(inp.value + 'T12:00:00').getTime();
+  if (isNaN(ts)) { alert('Invalid date selected.'); return; }
+  if (ts > Date.now()) { alert('Date cannot be in the future.'); return; }
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.lastDone = ts;
+  state.history.push({ taskId, completedAt: ts });
   save();
   renderDetail(taskId);
 }
